@@ -159,4 +159,20 @@ class PublicController extends Controller
             ]
         ]);
     }
+
+    /**
+     * API JSON so sánh 2 thuật toán (Greedy Baseline vs Improved Greedy) không cần đăng nhập
+     */
+    public function apiBenchmark(): void
+    {
+        $activityId = (int)($_GET['activity_id'] ?? 1);
+        $service = new AssignmentService();
+        $comparison = $service->compareAlgorithms($activityId);
+        $this->json([
+            'status'      => 'success',
+            'activity_id' => $activityId,
+            'comparison'  => $comparison,
+        ]);
+    }
 }
+
