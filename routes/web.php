@@ -1,0 +1,97 @@
+<?php
+/**
+ * routes/web.php
+ * Định nghĩa tất cả routes của ứng dụng
+ * Format: ['METHOD', 'URI pattern', 'Controller@method', 'middleware']
+ */
+
+return [
+    // ─── Trang công khai ──────────────────────────────────────
+    ['GET',  '/',                          'PublicController@home',           'public'],
+    ['GET',  '/activities',                'PublicController@activities',     'public'],
+    ['GET',  '/activities/{id}',           'PublicController@activityDetail', 'public'],
+
+    // ─── Xác thực ──────────────────────────────────────────────
+    ['GET',  '/login',                     'AuthController@loginForm',        'guest'],
+    ['POST', '/login',                     'AuthController@login',            'guest'],
+    ['GET',  '/register',                  'AuthController@registerForm',     'guest'],
+    ['POST', '/register',                  'AuthController@register',         'guest'],
+    ['POST', '/logout',                    'AuthController@logout',           'auth'],
+
+    // ─── Khu vực Tình nguyện viên ─────────────────────────────
+    ['GET',  '/volunteer/dashboard',       'Volunteer\DashboardController@index',    'volunteer'],
+    ['GET',  '/volunteer/profile',         'Volunteer\ProfileController@index',      'volunteer'],
+    ['POST', '/volunteer/profile',         'Volunteer\ProfileController@update',     'volunteer'],
+    ['GET',  '/volunteer/skills',          'Volunteer\ProfileController@skills',     'volunteer'],
+    ['POST', '/volunteer/skills',          'Volunteer\ProfileController@updateSkills','volunteer'],
+    ['GET',  '/volunteer/availability',    'Volunteer\AvailabilityController@index', 'volunteer'],
+    ['POST', '/volunteer/availability',    'Volunteer\AvailabilityController@store', 'volunteer'],
+    ['POST', '/volunteer/availability/delete', 'Volunteer\AvailabilityController@delete','volunteer'],
+    ['GET',  '/volunteer/shifts',          'Volunteer\ShiftController@available',    'volunteer'],
+    ['POST', '/volunteer/register',        'Volunteer\ShiftController@register',     'volunteer'],
+    ['POST', '/volunteer/unregister',      'Volunteer\ShiftController@unregister',   'volunteer'],
+    ['GET',  '/volunteer/my-registrations','Volunteer\ShiftController@myRegistrations','volunteer'],
+    ['GET',  '/volunteer/schedule',        'Volunteer\ShiftController@schedule',     'volunteer'],
+    ['POST', '/volunteer/confirm',         'Volunteer\ShiftController@confirm',      'volunteer'],
+    ['GET',  '/volunteer/replacement',     'Volunteer\ReplacementController@index',  'volunteer'],
+    ['POST', '/volunteer/replacement',     'Volunteer\ReplacementController@store',  'volunteer'],
+    ['GET',  '/volunteer/notifications',   'Volunteer\NotificationController@index', 'volunteer'],
+    ['POST', '/volunteer/notifications/read','Volunteer\NotificationController@markRead','volunteer'],
+    ['GET',  '/volunteer/history',         'Volunteer\DashboardController@history',  'volunteer'],
+    ['GET',  '/volunteer/change-password', 'Volunteer\ProfileController@changePasswordForm','volunteer'],
+    ['POST', '/volunteer/change-password', 'Volunteer\ProfileController@changePassword','volunteer'],
+
+    // ─── Khu vực Điều phối viên ───────────────────────────────
+    ['GET',  '/coordinator/dashboard',                 'Coordinator\DashboardController@index',       'coordinator'],
+    ['GET',  '/coordinator/activities',                'Coordinator\ActivityController@index',        'coordinator'],
+    ['GET',  '/coordinator/activities/create',         'Coordinator\ActivityController@createForm',   'coordinator'],
+    ['POST', '/coordinator/activities/create',         'Coordinator\ActivityController@create',       'coordinator'],
+    ['GET',  '/coordinator/activities/{id}/edit',      'Coordinator\ActivityController@editForm',     'coordinator'],
+    ['POST', '/coordinator/activities/{id}/edit',      'Coordinator\ActivityController@update',       'coordinator'],
+    ['POST', '/coordinator/activities/{id}/status',    'Coordinator\ActivityController@updateStatus', 'coordinator'],
+    ['GET',  '/coordinator/activities/{id}/shifts',    'Coordinator\ShiftController@index',           'coordinator'],
+    ['GET',  '/coordinator/shifts/create',             'Coordinator\ShiftController@createForm',      'coordinator'],
+    ['POST', '/coordinator/shifts/create',             'Coordinator\ShiftController@create',          'coordinator'],
+    ['GET',  '/coordinator/shifts/{id}/edit',          'Coordinator\ShiftController@editForm',        'coordinator'],
+    ['POST', '/coordinator/shifts/{id}/edit',          'Coordinator\ShiftController@update',          'coordinator'],
+    ['GET',  '/coordinator/registrations',             'Coordinator\RegistrationController@index',    'coordinator'],
+    ['POST', '/coordinator/registrations/approve',     'Coordinator\RegistrationController@approve',  'coordinator'],
+    ['POST', '/coordinator/registrations/reject',      'Coordinator\RegistrationController@reject',   'coordinator'],
+    ['GET',  '/coordinator/volunteers',                'Coordinator\VolunteerController@index',       'coordinator'],
+    ['GET',  '/coordinator/assignment/run',            'Coordinator\AssignmentController@runForm',    'coordinator'],
+    ['POST', '/coordinator/assignment/run',            'Coordinator\AssignmentController@run',        'coordinator'],
+    ['GET',  '/coordinator/assignment/preview/{runId}','Coordinator\AssignmentController@preview',    'coordinator'],
+    ['POST', '/coordinator/assignment/confirm/{runId}','Coordinator\AssignmentController@confirm',    'coordinator'],
+    ['GET',  '/coordinator/assignment/manual/{shiftId}','Coordinator\AssignmentController@manualForm','coordinator'],
+    ['POST', '/coordinator/assignment/manual/add',     'Coordinator\AssignmentController@manualAdd',  'coordinator'],
+    ['POST', '/coordinator/assignment/manual/remove',  'Coordinator\AssignmentController@manualRemove','coordinator'],
+    ['GET',  '/coordinator/replacement',               'Coordinator\ReplacementController@index',     'coordinator'],
+    ['POST', '/coordinator/replacement/approve',       'Coordinator\ReplacementController@approve',   'coordinator'],
+    ['POST', '/coordinator/replacement/reject',        'Coordinator\ReplacementController@reject',    'coordinator'],
+    ['GET',  '/coordinator/reports',                   'Coordinator\ReportController@index',          'coordinator'],
+    ['GET',  '/coordinator/reports/export-csv',        'Coordinator\ReportController@exportCsv',      'coordinator'],
+    ['GET',  '/coordinator/history',                   'Coordinator\ReportController@history',        'coordinator'],
+
+    // ─── Khu vực Admin ─────────────────────────────────────────
+    ['GET',  '/admin/dashboard',                       'Admin\DashboardController@index',    'admin'],
+    ['GET',  '/admin/users',                           'Admin\UserController@index',          'admin'],
+    ['GET',  '/admin/users/{id}/edit',                 'Admin\UserController@editForm',       'admin'],
+    ['POST', '/admin/users/{id}/edit',                 'Admin\UserController@update',         'admin'],
+    ['POST', '/admin/users/{id}/status',               'Admin\UserController@updateStatus',   'admin'],
+    ['POST', '/admin/users/{id}/role',                 'Admin\UserController@updateRole',     'admin'],
+    ['GET',  '/admin/skills',                          'Admin\SkillController@index',         'admin'],
+    ['POST', '/admin/skills/create',                   'Admin\SkillController@create',        'admin'],
+    ['POST', '/admin/skills/{id}/edit',                'Admin\SkillController@update',        'admin'],
+    ['POST', '/admin/skills/{id}/delete',              'Admin\SkillController@delete',        'admin'],
+    ['GET',  '/admin/activities',                      'Admin\ActivityController@index',      'admin'],
+    ['GET',  '/admin/reports',                         'Admin\ReportController@index',        'admin'],
+    ['GET',  '/admin/reports/algorithm',               'Admin\ReportController@algorithmComparison','admin'],
+    ['GET',  '/admin/logs',                            'Admin\LogController@index',           'admin'],
+    ['GET',  '/admin/seed',                            'Admin\SeedController@index',          'admin'],
+    ['POST', '/admin/seed/run',                        'Admin\SeedController@run',            'admin'],
+
+    // ─── Lỗi ───────────────────────────────────────────────────
+    ['GET',  '/403',                       'ErrorController@forbidden',   'public'],
+    ['GET',  '/404',                       'ErrorController@notFound',    'public'],
+    ['GET',  '/500',                       'ErrorController@serverError', 'public'],
+];

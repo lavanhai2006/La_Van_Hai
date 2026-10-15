@@ -1,0 +1,63 @@
+<?php
+/**
+ * app/Controllers/Volunteer/ReplacementController.php
+ * Gửi yêu cầu báo vắng và theo dõi trạng thái thay người
+ */
+
+declare(strict_types=1);
+
+namespace App\Controllers\Volunteer;
+
+use App\Core\Controller;
+use App\Core\Session;
+use App\Models\AssignmentModel;
+use App\Models\ReplacementModel;
+
+class ReplacementController extends Controller
+{
+    protected string $layout = 'volunteer';
+    private ReplacementModel $replacementModel;
+    private AssignmentModel $asgnModel;
+
+    public function __construct()
+    {
+        $this->replacementModel = new ReplacementModel();
+        $this->asgnModel = new AssignmentModel();
+    }
+
+    public function index(): void
+    {
+        $userId = (int)Session::userId();
+        $requests = $this->replacementModel->getByUser($userId);
+        $myAssignments = $this->asgnModel->getByUser($userId);
+
+        $this->render('volunteer.replacement', [
+            'title'         => 'Báo Vắng & Thay Người | VolunteerHub',
+            'requests'      => $requests,
+            'myAssignments' => $myAssignments,
+            'csrfToken'     => Session::generateCsrf(),
+            'success'       => Session::getFlash('success'),
+            'error'         => Session::getFlash('error'),
+        ]);
+    }
+
+    public function store(): void
+    {
+        $this->verifyCsrf();
+        $userId = (int)Session::userId();
+        $asgnId = (int)$this->post('assignment_id', 0);
+        $reason = trim($this->post('reason', ''));
+
+        if (empty($reason)) {
+            $this->redirect('/volunteer/replacement', ['error' => 'Vui lòng cung cấp lý do báo vắng.']);
+            return;
+        }
+
+        $res = $this->replacementModel->createRequest($asgnId, $userId, $reason);
+        if ($res['success']) {
+            $this->redirect('/volunteer/replacement', ['success' => $res['message']]);
+        } else {
+            $this->redirect('/volunteer/replacement', ['error' => $res['message']]);
+        }
+    }
+}

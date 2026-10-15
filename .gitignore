@@ -1,0 +1,15 @@
+.env
+*.log
+*.cache
+vendor/
+node_modules/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+/public/uploads/
+/storage/
+*.bak
+.idea/
+.vscode/settings.json
+composer.lock
