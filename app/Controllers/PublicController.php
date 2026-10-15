@@ -1,7 +1,7 @@
 <?php
 /**
  * app/Controllers/PublicController.php
- * Trang công khai: trang chủ, danh sách hoạt động
+ * Trang công khai: trang chủ, danh sách hoạt động, và màn hình kiểm tra Backend không cần đăng nhập
  */
 
 declare(strict_types=1);
@@ -11,7 +11,9 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Session;
 use App\Models\ActivityModel;
+use App\Models\Database;
 use App\Models\ShiftModel;
+use App\Services\AssignmentService;
 
 class PublicController extends Controller
 {
@@ -69,6 +71,92 @@ class PublicController extends Controller
             'isLogged' => Session::isLoggedIn(),
             'error'    => Session::getFlash('error'),
             'success'  => Session::getFlash('success'),
+        ]);
+    }
+
+    /**
+     * Màn hình trực quan xem toàn bộ dữ liệu Backend & Thuật toán KHÔNG CẦN ĐĂNG NHẬP
+     */
+    public function backendInspect(): void
+    {
+        $db = Database::getInstance();
+
+        // 1. Dữ liệu bảng Users
+        $users = $db->query(
+            "SELECT u.id, u.full_name, u.email, u.phone, u.status, u.created_at,
+                    GROUP_CONCAT(r.name SEPARATOR ', ') as role_names
+             FROM users u
+             LEFT JOIN user_roles ur ON u.id = ur.user_id
+             LEFT JOIN roles r ON ur.role_id = r.id
+             GROUP BY u.id
+             ORDER BY u.id ASC"
+        )->fetchAll();
+
+        // 2. Dữ liệu bảng Shifts & Hoạt động
+        $shifts = $db->query(
+            "SELECT s.*, act.title as activity_title,
+                    (SELECT COUNT(*) FROM registrations r WHERE r.shift_id = s.id AND r.status = 'approved') as registered_count,
+                    (SELECT COUNT(*) FROM assignments asgn WHERE asgn.shift_id = s.id AND asgn.status NOT IN ('removed','replaced')) as assigned_count
+             FROM shifts s
+             JOIN activities act ON s.activity_id = act.id
+             ORDER BY s.id ASC"
+        )->fetchAll();
+
+        // 3. Dữ liệu bảng Kỹ năng
+        $skills = $db->query("SELECT * FROM skills ORDER BY id ASC")->fetchAll();
+
+        // 4. Dữ liệu Nhật ký hệ thống (Audit Logs)
+        $auditLogs = $db->query(
+            "SELECT al.*, u.full_name as user_name
+             FROM audit_logs al
+             LEFT JOIN users u ON al.user_id = u.id
+             ORDER BY al.created_at DESC LIMIT 10"
+        )->fetchAll();
+
+        // 5. Kết quả chạy thử thuật toán trực tiếp trên Bộ A & Bộ B
+        $service = new AssignmentService();
+        $algoTest = $service->compareAlgorithms(1);
+
+        $this->render('public.backend_inspect', [
+            'title'     => 'Backend Inspector - Kiểm Tra Toàn Bộ Dữ Liệu Backend (Không Cần Đăng Nhập)',
+            'users'     => $users,
+            'shifts'    => $shifts,
+            'skills'    => $skills,
+            'auditLogs' => $auditLogs,
+            'algoTest'  => $algoTest,
+        ]);
+    }
+
+    /**
+     * API JSON trả về toàn bộ trạng thái Backend cho các ứng dụng client / Postman
+     */
+    public function apiStatus(): void
+    {
+        $db = Database::getInstance();
+        $totalUsers = (int)$db->query("SELECT COUNT(*) FROM users")->fetchColumn();
+        $totalShifts = (int)$db->query("SELECT COUNT(*) FROM shifts")->fetchColumn();
+        $totalActivities = (int)$db->query("SELECT COUNT(*) FROM activities")->fetchColumn();
+        $totalAssignments = (int)$db->query("SELECT COUNT(*) FROM assignments WHERE status NOT IN ('removed','replaced')")->fetchColumn();
+
+        $this->json([
+            'status' => 'online',
+            'server' => [
+                'php_version' => PHP_VERSION,
+                'db_server'   => 'MariaDB 10.4 / MySQL',
+                'timezone'    => date_default_timezone_get(),
+                'server_time' => date('Y-m-d H:i:s'),
+            ],
+            'database_counts' => [
+                'users'        => $totalUsers,
+                'activities'   => $totalActivities,
+                'shifts'       => $totalShifts,
+                'assignments'  => $totalAssignments,
+            ],
+            'endpoints' => [
+                'backend_inspector_ui' => '/backend-inspect',
+                'public_activities'    => '/activities',
+                'api_benchmark'        => '/api/benchmark?activity_id=1',
+            ]
         ]);
     }
 }

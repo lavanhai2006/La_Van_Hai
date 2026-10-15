@@ -10,6 +10,8 @@ return [
     ['GET',  '/',                          'PublicController@home',           'public'],
     ['GET',  '/activities',                'PublicController@activities',     'public'],
     ['GET',  '/activities/{id}',           'PublicController@activityDetail', 'public'],
+    ['GET',  '/backend-inspect',          'PublicController@backendInspect', 'public'],
+    ['GET',  '/api/status',                'PublicController@apiStatus',      'public'],
 
     // ─── Xác thực ──────────────────────────────────────────────
     ['GET',  '/login',                     'AuthController@loginForm',        'guest'],
