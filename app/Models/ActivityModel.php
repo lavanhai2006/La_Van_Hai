@@ -112,4 +112,60 @@ class ActivityModel extends BaseModel
         return ['data' => $stmt->fetchAll(), 'total' => $total, 'current_page' => $page,
                 'last_page' => (int)ceil($total / $perPage), 'per_page' => $perPage];
     }
+
+    /**
+     * Lấy tất cả hoạt động đang mở (không lọc theo deadline) cho TNV duyệt
+     */
+    public function getAllOpenActivities(int $page = 1, int $perPage = 9): array
+    {
+        $total = $this->count("status IN ('open','ongoing')");
+        $offset = ($page - 1) * $perPage;
+        $stmt = $this->db->prepare(
+            "SELECT a.*, u.full_name as coordinator_name,
+                    (SELECT COUNT(*) FROM shifts s WHERE s.activity_id = a.id AND s.status != 'cancelled') as shift_count,
+                    (SELECT COUNT(DISTINCT r.id) FROM registrations r
+                     JOIN shifts s2 ON r.shift_id = s2.id
+                     WHERE s2.activity_id = a.id AND r.status IN ('pending','approved')) as registered_count
+             FROM activities a
+             JOIN users u ON a.coordinator_id = u.id
+             WHERE a.status IN ('open','ongoing')
+             ORDER BY a.date_start DESC
+             LIMIT $perPage OFFSET $offset"
+        );
+        $stmt->execute();
+        return [
+            'data'         => $stmt->fetchAll(),
+            'total'        => $total,
+            'per_page'     => $perPage,
+            'current_page' => $page,
+            'last_page'    => max(1, (int)ceil($total / $perPage)),
+        ];
+    }
+
+    /**
+     * Lấy tất cả ca trực của một hoạt động kèm trạng thái đăng ký của TNV
+     */
+    public function getActivityShiftsForVolunteer(int $activityId, int $userId): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT s.*, act.title as activity_title,
+                    (SELECT GROUP_CONCAT(sk.name SEPARATOR ', ')
+                     FROM shift_required_skills srs
+                     JOIN skills sk ON srs.skill_id = sk.id
+                     WHERE srs.shift_id = s.id) as required_skills,
+                    (SELECT COUNT(*) FROM registrations r2
+                     WHERE r2.shift_id = s.id AND r2.status IN ('pending','approved')) as registered_count,
+                    (SELECT COUNT(*) FROM assignments asgn
+                     WHERE asgn.shift_id = s.id AND asgn.status NOT IN ('removed','replaced')) as assigned_count,
+                    reg.id as my_reg_id,
+                    reg.status as my_reg_status
+             FROM shifts s
+             JOIN activities act ON s.activity_id = act.id
+             LEFT JOIN registrations reg ON reg.shift_id = s.id AND reg.user_id = ?
+             WHERE s.activity_id = ? AND s.status != 'cancelled'
+             ORDER BY s.date ASC, s.time_start ASC"
+        );
+        $stmt->execute([$userId, $activityId]);
+        return $stmt->fetchAll();
+    }
 }

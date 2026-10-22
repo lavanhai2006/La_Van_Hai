@@ -49,6 +49,10 @@ $userName = Session::userName();
                 <a class="nav-link <?= str_ends_with($currentUri, '/dashboard') ? 'active' : '' ?>" href="<?= $baseUrl ?>/volunteer/dashboard">
                     <i class="bi bi-grid-1x2"></i> Tổng quan
                 </a>
+                <a class="nav-link <?= str_contains($currentUri, '/activities') ? 'active' : '' ?>" href="<?= $baseUrl ?>/volunteer/activities">
+                    <i class="bi bi-compass"></i> Khám phá hoạt động
+                    <span class="badge bg-warning text-dark ms-auto" style="font-size: 0.65rem;">Mới</span>
+                </a>
                 <a class="nav-link <?= str_ends_with($currentUri, '/schedule') ? 'active' : '' ?>" href="<?= $baseUrl ?>/volunteer/schedule">
                     <i class="bi bi-calendar-check"></i> Lịch phân công
                 </a>

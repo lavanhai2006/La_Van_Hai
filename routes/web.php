@@ -22,8 +22,11 @@ return [
     ['POST', '/logout',                    'AuthController@logout',           'auth'],
 
     // ─── Khu vực Tình nguyện viên ─────────────────────────────
-    ['GET',  '/volunteer/dashboard',       'Volunteer\DashboardController@index',    'volunteer'],
-    ['GET',  '/volunteer/profile',         'Volunteer\ProfileController@index',      'volunteer'],
+    ['GET',  '/volunteer/dashboard',           'Volunteer\DashboardController@index',        'volunteer'],
+    ['GET',  '/volunteer/activities',          'Volunteer\ActivityController@index',         'volunteer'],
+    ['POST', '/volunteer/activities/register', 'Volunteer\ActivityController@registerShift', 'volunteer'],
+    ['GET',  '/volunteer/activities/{id}',     'Volunteer\ActivityController@detail',        'volunteer'],
+    ['GET',  '/volunteer/profile',             'Volunteer\ProfileController@index',          'volunteer'],
     ['POST', '/volunteer/profile',         'Volunteer\ProfileController@update',     'volunteer'],
     ['GET',  '/volunteer/skills',          'Volunteer\ProfileController@skills',     'volunteer'],
     ['POST', '/volunteer/skills',          'Volunteer\ProfileController@updateSkills','volunteer'],
