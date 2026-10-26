@@ -52,6 +52,23 @@ class UserModel extends BaseModel
         return $result ?: null;
     }
 
+    public function findSessionIdentity(int $id): ?array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT u.id, u.email, u.full_name, u.status,
+                    GROUP_CONCAT(r.name ORDER BY r.name) as role_names
+             FROM users u
+             LEFT JOIN user_roles ur ON u.id = ur.user_id
+             LEFT JOIN roles r ON ur.role_id = r.id
+             WHERE u.id = ?
+             GROUP BY u.id
+             LIMIT 1"
+        );
+        $stmt->execute([$id]);
+        $result = $stmt->fetch();
+        return $result ?: null;
+    }
+
     /**
      * Tạo user mới
      */
@@ -132,10 +149,27 @@ class UserModel extends BaseModel
     /**
      * Danh sách user với phân trang và tìm kiếm
      */
-    public function search(string $keyword = '', string $role = '', string $status = '', int $page = 1, int $perPage = 20): array
-    {
+    public function search(
+        string $keyword = '',
+        string $role = '',
+        string $status = '',
+        int $page = 1,
+        int $perPage = 20,
+        string $sortBy = 'created_at',
+        string $sortDirection = 'DESC'
+    ): array {
         $params = [];
         $wheres = [];
+
+        $sortColumns = [
+            'name'         => 'u.full_name',
+            'email'        => 'u.email',
+            'status'       => 'u.status',
+            'created_at'   => 'u.created_at',
+            'last_login_at' => 'u.last_login_at',
+        ];
+        $orderBy = $sortColumns[$sortBy] ?? $sortColumns['created_at'];
+        $direction = strtoupper($sortDirection) === 'ASC' ? 'ASC' : 'DESC';
 
         if ($keyword !== '') {
             $wheres[] = '(u.full_name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)';
@@ -172,7 +206,7 @@ class UserModel extends BaseModel
                 $joinSQL
                 $whereSQL
                 GROUP BY u.id
-                ORDER BY u.created_at DESC
+                ORDER BY $orderBy $direction, u.id DESC
                 LIMIT $perPage OFFSET $offset";
 
         $stmt = $this->db->prepare($sql);
@@ -185,6 +219,100 @@ class UserModel extends BaseModel
             'current_page' => $page,
             'last_page'    => (int)ceil($total / $perPage),
         ];
+    }
+
+    public function deleteUsers(array $userIds, int $adminId): int
+    {
+        $userIds = array_values(array_unique($userIds));
+        if (!$userIds) return 0;
+        if (in_array($adminId, $userIds, true)) {
+            throw new \DomainException('Bạn không thể xóa tài khoản của chính mình.');
+        }
+
+        $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+        $this->db->beginTransaction();
+
+        try {
+            $adminRoleId = $this->db->query(
+                "SELECT id FROM roles WHERE name = 'admin' LIMIT 1 FOR UPDATE"
+            )->fetchColumn();
+
+            $stmt = $this->db->prepare(
+                "SELECT u.id, u.email, u.full_name,
+                        EXISTS (
+                            SELECT 1 FROM user_roles ur
+                            INNER JOIN roles r ON r.id = ur.role_id
+                            WHERE ur.user_id = u.id AND r.name = 'admin'
+                        ) AS is_admin
+                 FROM users u
+                 WHERE u.id IN ($placeholders)
+                 FOR UPDATE"
+            );
+            $stmt->execute($userIds);
+            $users = $stmt->fetchAll();
+
+            if (!$users) {
+                $this->db->commit();
+                return 0;
+            }
+
+            $selectedAdminCount = count(array_filter(
+                $users,
+                static fn(array $user): bool => (bool)$user['is_admin']
+            ));
+
+            if ($adminRoleId !== false && $selectedAdminCount > 0) {
+                $adminCountStmt = $this->db->prepare(
+                    "SELECT user_id FROM user_roles WHERE role_id = ? FOR UPDATE"
+                );
+                $adminCountStmt->execute([(int)$adminRoleId]);
+                $adminCount = count($adminCountStmt->fetchAll());
+
+                if ($adminCount - $selectedAdminCount < 1) {
+                    throw new \DomainException('Không thể xóa tài khoản quản trị viên cuối cùng.');
+                }
+            }
+
+            $audit = $this->db->prepare(
+                "INSERT INTO audit_logs
+                    (user_id, action, entity_type, entity_id, old_data, ip_address, user_agent)
+                 VALUES (?, 'delete_user', 'user', ?, ?, ?, ?)"
+            );
+            foreach ($users as $user) {
+                $audit->execute([
+                    $adminId,
+                    (int)$user['id'],
+                    json_encode(
+                        ['email' => $user['email'], 'full_name' => $user['full_name']],
+                        JSON_UNESCAPED_UNICODE
+                    ),
+                    $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                    substr($_SERVER['HTTP_USER_AGENT'] ?? 'CLI/Internal', 0, 500),
+                ]);
+            }
+
+            $deleteStmt = $this->db->prepare(
+                "DELETE FROM users WHERE id IN ($placeholders)"
+            );
+            $deleteStmt->execute(array_column($users, 'id'));
+            $deletedCount = $deleteStmt->rowCount();
+
+            $this->db->commit();
+            return $deletedCount;
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    public function deleteAllUsers(int $adminId): int
+    {
+        $stmt = $this->db->prepare("SELECT id FROM users WHERE id <> ?");
+        $stmt->execute([$adminId]);
+
+        return $this->deleteUsers(array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN)), $adminId);
     }
 
     /**

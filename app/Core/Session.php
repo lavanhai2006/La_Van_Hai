@@ -113,6 +113,26 @@ class Session
         $_SESSION['user_roles'] = array_filter(explode(',', $user['role_names'] ?? ''));
     }
 
+    public static function refreshUser(array $user): void
+    {
+        $_SESSION['user_email'] = $user['email'];
+        $_SESSION['user_name']  = $user['full_name'];
+        $_SESSION['user_roles'] = array_filter(explode(',', $user['role_names'] ?? ''));
+    }
+
+    public static function invalidateLogin(): void
+    {
+        unset(
+            $_SESSION['user_id'],
+            $_SESSION['user_email'],
+            $_SESSION['user_name'],
+            $_SESSION['user_roles'],
+            $_SESSION['_csrf_token']
+        );
+        session_regenerate_id(true);
+        $_SESSION['_last_regenerated'] = time();
+    }
+
     public static function isLoggedIn(): bool
     {
         return isset($_SESSION['user_id']);

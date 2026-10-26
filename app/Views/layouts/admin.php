@@ -4,6 +4,7 @@
  */
 use App\Core\Session;
 $baseUrl = rtrim(getenv('APP_URL') ?: 'http://localhost/VolunteerHub/public', '/');
+$mainJsVersion = filemtime(dirname(__DIR__, 3) . '/public/assets/js/main.js');
 $currentUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $userName = Session::userName();
 ?>
@@ -96,6 +97,6 @@ $userName = Session::userName();
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="<?= $baseUrl ?>/assets/js/main.js"></script>
+    <script src="<?= $baseUrl ?>/assets/js/main.js?v=<?= $mainJsVersion ?>"></script>
 </body>
 </html>

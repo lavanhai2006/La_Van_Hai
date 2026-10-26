@@ -29,8 +29,24 @@ class UserController extends Controller
         $role    = trim($this->get('role', ''));
         $status  = trim($this->get('status', ''));
         $page    = max(1, (int)$this->get('page', 1));
+        $sortBy  = trim($this->get('sort_by', 'created_at'));
+        $sortDirection = strtoupper(trim($this->get('sort_direction', 'DESC')));
+        if (!in_array($sortBy, ['name', 'email', 'status', 'created_at', 'last_login_at'], true)) {
+            $sortBy = 'created_at';
+        }
+        if (!in_array($sortDirection, ['ASC', 'DESC'], true)) {
+            $sortDirection = 'DESC';
+        }
 
-        $result = $this->userModel->search($keyword, $role, $status, $page, 15);
+        $result = $this->userModel->search(
+            $keyword,
+            $role,
+            $status,
+            $page,
+            15,
+            $sortBy,
+            $sortDirection
+        );
 
         $db = Database::getInstance();
         $roles = $db->query("SELECT * FROM roles ORDER BY id ASC")->fetchAll();
@@ -44,6 +60,9 @@ class UserController extends Controller
             'keyword'   => $keyword,
             'role'      => $role,
             'status'    => $status,
+            'sortBy'    => $sortBy,
+            'sortDirection' => $sortDirection,
+            'currentAdminId' => (int)Session::userId(),
             'roles'     => $roles,
             'csrfToken' => Session::generateCsrf(),
             'success'   => Session::getFlash('success'),
@@ -66,6 +85,57 @@ class UserController extends Controller
         $this->userModel->updateStatus($userId, $status);
 
         $this->redirect('/admin/users', ['success' => "Đã cập nhật trạng thái tài khoản sang: $status"]);
+    }
+
+    public function deleteMultiple(): void
+    {
+        $this->verifyCsrf();
+
+        $userIds = $this->post('user_ids', []);
+        if (!is_array($userIds) || !$userIds) {
+            $this->redirect('/admin/users', ['error' => 'Vui lòng chọn ít nhất một tài khoản để xóa.']);
+        }
+
+        $ids = [];
+        foreach ($userIds as $userId) {
+            if (!is_string($userId) && !is_int($userId)) {
+                $this->redirect('/admin/users', ['error' => 'Danh sách tài khoản cần xóa không hợp lệ.']);
+            }
+            $validatedId = filter_var($userId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if ($validatedId === false) {
+                $this->redirect('/admin/users', ['error' => 'Danh sách tài khoản cần xóa không hợp lệ.']);
+            }
+            $ids[] = $validatedId;
+        }
+
+        try {
+            $deletedCount = $this->userModel->deleteUsers($ids, (int)Session::userId());
+        } catch (\DomainException $e) {
+            $this->redirect('/admin/users', ['error' => $e->getMessage()]);
+        }
+
+        if ($deletedCount === 0) {
+            $this->redirect('/admin/users', ['error' => 'Không tìm thấy tài khoản nào để xóa.']);
+        }
+
+        $this->redirect('/admin/users', ['success' => "Đã xóa $deletedCount tài khoản và dữ liệu liên quan."]);
+    }
+
+    public function deleteAll(): void
+    {
+        $this->verifyCsrf();
+
+        try {
+            $deletedCount = $this->userModel->deleteAllUsers((int)Session::userId());
+        } catch (\DomainException $e) {
+            $this->redirect('/admin/users', ['error' => $e->getMessage()]);
+        }
+
+        if ($deletedCount === 0) {
+            $this->redirect('/admin/users', ['error' => 'Không có tài khoản nào khác để xóa.']);
+        }
+
+        $this->redirect('/admin/users', ['success' => "Đã xóa tất cả $deletedCount tài khoản (giữ lại tài khoản đang đăng nhập)."]);
     }
 
     public function updateRole(string $id): void

@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Models\UserModel;
+
 class Router
 {
     private array $routes = [];
@@ -19,6 +21,8 @@ class Router
 
     public function dispatch(): void
     {
+        $this->refreshAuthenticatedUser();
+
         $method = $_SERVER['REQUEST_METHOD'];
         $uri    = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
@@ -52,6 +56,19 @@ class Router
         // Không tìm thấy route -> 404
         http_response_code(404);
         $this->callHandler('ErrorController@notFound', []);
+    }
+
+    private function refreshAuthenticatedUser(): void
+    {
+        if (!Session::isLoggedIn()) return;
+
+        $user = (new UserModel())->findSessionIdentity((int)Session::userId());
+        if (!$user || $user['status'] !== 'active') {
+            Session::invalidateLogin();
+            $this->redirect('/login?reason=account_locked');
+        }
+
+        Session::refreshUser($user);
     }
 
     private function applyMiddleware(string $middleware): void

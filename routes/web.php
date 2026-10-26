@@ -81,6 +81,8 @@ return [
     // ─── Khu vực Admin ─────────────────────────────────────────
     ['GET',  '/admin/dashboard',                       'Admin\DashboardController@index',    'admin'],
     ['GET',  '/admin/users',                           'Admin\UserController@index',          'admin'],
+    ['POST', '/admin/users/delete',                    'Admin\UserController@deleteMultiple','admin'],
+    ['POST', '/admin/users/delete-all',                'Admin\UserController@deleteAll',     'admin'],
     ['GET',  '/admin/users/{id}/edit',                 'Admin\UserController@editForm',       'admin'],
     ['POST', '/admin/users/{id}/edit',                 'Admin\UserController@update',         'admin'],
     ['POST', '/admin/users/{id}/status',               'Admin\UserController@updateStatus',   'admin'],

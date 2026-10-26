@@ -25,10 +25,15 @@ class AuthController extends Controller
 
     public function loginForm(): void
     {
+        $error = Session::getFlash('error');
+        if ($error === null && $this->get('reason') === 'account_locked') {
+            $error = 'Tài khoản đã bị khóa hoặc vô hiệu hóa. Bạn đã được đăng xuất.';
+        }
+
         $this->render('auth.login', [
             'title'     => 'Đăng Nhập | VolunteerHub',
             'csrfToken' => Session::generateCsrf(),
-            'error'     => Session::getFlash('error'),
+            'error'     => $error,
             'success'   => Session::getFlash('success'),
         ]);
     }

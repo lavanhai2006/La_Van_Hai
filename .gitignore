@@ -8,6 +8,7 @@ Thumbs.db
 *.swp
 *.swo
 /public/uploads/
+/public/test_db.php
 /storage/
 *.bak
 .idea/
